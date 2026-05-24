@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 import { config } from 'dotenv'
 import { resolve } from 'path'
 
@@ -41,9 +42,17 @@ async function seed() {
     await db.from('users').update({ password_hash: passwordHash, name: DEMO_NAME }).eq('id', userId)
     console.log(`Demo user already exists (id: ${userId}), password reset.`)
   } else {
+    const now = new Date().toISOString()
     const { data: newUser, error } = await db
       .from('users')
-      .insert({ email: DEMO_EMAIL, password_hash: passwordHash, name: DEMO_NAME, role: 'ADMIN' })
+      .insert({
+        id: randomUUID(),
+        email: DEMO_EMAIL,
+        password_hash: passwordHash,
+        name: DEMO_NAME,
+        role: 'ADMIN',
+        updated_at: now,
+      })
       .select('id')
       .single()
     if (error || !newUser) {
