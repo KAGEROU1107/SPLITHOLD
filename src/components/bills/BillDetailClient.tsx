@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Copy, CheckCircle2, Clock, ChevronLeft, Loader2, ExternalLink, Download, FileText } from 'lucide-react'
+import { Copy, CheckCircle2, Clock, ChevronLeft, Loader2, ExternalLink, Download, FileText, Link2, UserPlus, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { BillWithParticipants } from '@/lib/splithold-db'
 
@@ -26,7 +26,10 @@ function formatDateTime(iso: string) {
 export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const [bill, setBill] = useState(initialBill)
   const [togglingStatus, setTogglingStatus] = useState(false)
+  const [togglingReg, setTogglingReg] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const isOpenMode = bill.amount_per_pax !== null
 
   const confirmed = bill.participants.filter(p => p.status === 'CONFIRMED').length
   const total = bill.participants.length
@@ -34,15 +37,29 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const confirmedCents = bill.participants
     .filter(p => p.status === 'CONFIRMED')
     .reduce((s, p) => s + p.amount_cents, 0)
-  const remainingCents = bill.total_amount_cents - confirmedCents
+  const remainingCents = isOpenMode
+    ? (total * (bill.amount_per_pax ?? 0)) - confirmedCents
+    : bill.total_amount_cents - confirmedCents
 
-  function copyLink(token: string) {
-    const url = `${appUrl}/pay/${token}`
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success('Link copied!')
+  const effectiveTotalCents = isOpenMode
+    ? total * (bill.amount_per_pax ?? 0)
+    : bill.total_amount_cents
+
+  function copyToClipboard(text: string, label = 'Copied!') {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(label)
     }).catch(() => {
       toast.error('Could not copy — try manually')
     })
+  }
+
+  function copyPayLink(token: string) {
+    copyToClipboard(`${appUrl}/pay/${token}`, 'Link copied!')
+  }
+
+  function copyJoinLink() {
+    if (!bill.join_token) return
+    copyToClipboard(`${appUrl}/join/${bill.join_token}`, 'Join link copied!')
   }
 
   async function toggleStatus() {
@@ -64,6 +81,28 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
       toast.error('Connection error')
     } finally {
       setTogglingStatus(false)
+    }
+  }
+
+  async function toggleRegistration() {
+    const newOpen = !bill.registration_open
+    setTogglingReg(true)
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/registration`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: newOpen }),
+      })
+      if (res.ok) {
+        setBill(prev => ({ ...prev, registration_open: newOpen }))
+        toast.success(newOpen ? 'Registration opened' : 'Registration closed')
+      } else {
+        toast.error('Failed to update registration')
+      }
+    } catch {
+      toast.error('Connection error')
+    } finally {
+      setTogglingReg(false)
     }
   }
 
@@ -107,11 +146,71 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
             <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${bill.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
               {bill.status}
             </span>
+            {isOpenMode && (
+              <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-brand-mist text-brand-primary">
+                Open Registration
+              </span>
+            )}
           </div>
           {bill.description && <p className="mt-1 text-sm text-slate-500">{bill.description}</p>}
-          <p className="mt-1 text-xs text-slate-400">Due {formatDate(bill.due_date)} · {fmtRm(bill.total_amount_cents)} total</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Due {formatDate(bill.due_date)} ·{' '}
+            {isOpenMode
+              ? `${fmtRm(bill.amount_per_pax!)} per person`
+              : `${fmtRm(bill.total_amount_cents)} total`
+            }
+          </p>
         </div>
       </div>
+
+      {/* Open registration panel */}
+      {isOpenMode && bill.join_token && (
+        <div className="rounded-2xl border border-brand-primary/20 bg-brand-mist/30 px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-brand-primary" />
+              <p className="text-sm font-semibold text-brand-primary">Self-Registration</p>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${bill.registration_open ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                {bill.registration_open ? 'Open' : 'Closed'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-xs text-slate-500">
+                {total} joined{bill.max_participants ? ` / ${bill.max_participants} max` : ''}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs text-slate-600 font-mono truncate">
+              {appUrl}/join/{bill.join_token}
+            </code>
+            <button
+              type="button"
+              onClick={copyJoinLink}
+              className="shrink-0 flex items-center gap-1.5 rounded-lg border border-brand-primary/30 bg-white px-3 py-1.5 text-xs text-brand-primary hover:bg-brand-mist/50 transition-colors"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              Copy
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleRegistration}
+            disabled={togglingReg || bill.status === 'CLOSED'}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+              bill.registration_open
+                ? 'border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'
+                : 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            {togglingReg && <Loader2 className="h-3 w-3 animate-spin" />}
+            {bill.registration_open ? 'Close Registration' : 'Open Registration'}
+          </button>
+        </div>
+      )}
 
       {/* Bank details (read-only) */}
       {bill.bank_name && bill.bank_account_number && bill.bank_account_name && (
@@ -149,15 +248,18 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="rounded-xl bg-emerald-50 px-4 py-3">
             <p className="text-xs text-emerald-600 font-medium">Collected</p>
-            <p className="mt-0.5 text-lg font-bold text-emerald-700">RM {(confirmedCents / 100).toFixed(2)}</p>
+            <p className="mt-0.5 text-lg font-bold text-emerald-700">{fmtRm(confirmedCents)}</p>
           </div>
           <div className="rounded-xl bg-amber-50 px-4 py-3">
             <p className="text-xs text-amber-600 font-medium">Remaining</p>
             <p className={`mt-0.5 text-lg font-bold ${remainingCents > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
-              RM {(remainingCents / 100).toFixed(2)}
+              {fmtRm(remainingCents > 0 ? remainingCents : 0)}
             </p>
           </div>
         </div>
+        {effectiveTotalCents > 0 && (
+          <p className="text-xs text-slate-400 text-right">of {fmtRm(effectiveTotalCents)} total</p>
+        )}
         {confirmed === total && total > 0 && (
           <p className="text-xs text-emerald-600 font-semibold">All payments confirmed!</p>
         )}
@@ -169,76 +271,88 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Participants</h2>
         </div>
         <div className="divide-y divide-slate-100">
-          {bill.participants.map(p => (
-            <div key={p.id} className="px-5 py-4 space-y-2">
-              <div className="flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900 truncate">{p.name}</p>
-                  {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
-                  <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  {p.status === 'CONFIRMED' ? (
-                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Confirmed
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                      <Clock className="h-3.5 w-3.5" />
-                      Pending
-                    </span>
-                  )}
-
-                  {bill.status === 'ACTIVE' && p.status === 'PENDING' && (
-                    <button
-                      type="button"
-                      onClick={() => copyLink(p.payment_token)}
-                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
-                    >
-                      <Copy className="h-3 w-3" />
-                      Copy link
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Confirmed timestamp + proof actions */}
-              {p.status === 'CONFIRMED' && (
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs text-slate-400">
-                    {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
-                  </p>
-                  {p.proof_url && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => viewProof(p.id)}
-                        className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        View proof
-                      </button>
-                      <span className="text-slate-200">|</span>
-                      <button
-                        type="button"
-                        onClick={() => downloadProof(p.id, p.name)}
-                        disabled={downloadingId === p.id}
-                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
-                      >
-                        {downloadingId === p.id
-                          ? <Loader2 className="h-3 w-3 animate-spin" />
-                          : <Download className="h-3 w-3" />
-                        }
-                        Download
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+          {bill.participants.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-slate-400">
+              {isOpenMode
+                ? 'No participants yet. Open registration to let people join.'
+                : 'No participants.'
+              }
             </div>
-          ))}
+          ) : (
+            bill.participants.map(p => (
+              <div key={p.id} className="px-5 py-4 space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-900 truncate">{p.name}</p>
+                    {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
+                    {(p as { phone_number?: string | null }).phone_number && (
+                      <p className="text-xs text-slate-400 truncate">{(p as { phone_number?: string | null }).phone_number}</p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {p.status === 'CONFIRMED' ? (
+                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Confirmed
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                        <Clock className="h-3.5 w-3.5" />
+                        Pending
+                      </span>
+                    )}
+
+                    {bill.status === 'ACTIVE' && p.status === 'PENDING' && (
+                      <button
+                        type="button"
+                        onClick={() => copyPayLink(p.payment_token)}
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy link
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Confirmed timestamp + proof actions */}
+                {p.status === 'CONFIRMED' && (
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-xs text-slate-400">
+                      {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
+                    </p>
+                    {p.proof_url && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => viewProof(p.id)}
+                          className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View proof
+                        </button>
+                        <span className="text-slate-200">|</span>
+                        <button
+                          type="button"
+                          onClick={() => downloadProof(p.id, p.name)}
+                          disabled={downloadingId === p.id}
+                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                        >
+                          {downloadingId === p.id
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Download className="h-3 w-3" />
+                          }
+                          Download
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
