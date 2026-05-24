@@ -1,0 +1,25 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/lib/session'
+import { updateBillStatus } from '@/lib/splithold-db'
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+
+  try {
+    const body = await request.json() as { status?: string }
+    if (body.status !== 'ACTIVE' && body.status !== 'CLOSED') {
+      return NextResponse.json({ error: 'status must be ACTIVE or CLOSED' }, { status: 400 })
+    }
+
+    await updateBillStatus(id, session.id, body.status)
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Failed to update bill status' }, { status: 500 })
+  }
+}
