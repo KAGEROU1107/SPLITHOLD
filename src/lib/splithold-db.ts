@@ -42,6 +42,7 @@ export interface CreateBillInput {
 export interface BillSummary extends Bill {
   participant_count: number
   confirmed_count: number
+  confirmed_amount_cents: number
 }
 
 export async function createBill(
@@ -90,7 +91,7 @@ export async function createBill(
 export async function getBillsByOrganizer(organizerId: string): Promise<BillSummary[]> {
   const { data: bills, error } = await supabaseAdmin
     .from('bills')
-    .select('*, bill_participants(id, status)')
+    .select('*, bill_participants(id, status, amount_cents)')
     .eq('organizer_id', organizerId)
     .order('created_at', { ascending: false })
 
@@ -98,7 +99,8 @@ export async function getBillsByOrganizer(organizerId: string): Promise<BillSumm
   if (!bills) return []
 
   return bills.map(bill => {
-    const parts = (bill.bill_participants ?? []) as Array<{ id: string; status: string }>
+    const parts = (bill.bill_participants ?? []) as Array<{ id: string; status: string; amount_cents: number }>
+    const confirmed = parts.filter(p => p.status === 'CONFIRMED')
     return {
       id: bill.id,
       organizer_id: bill.organizer_id,
@@ -109,7 +111,8 @@ export async function getBillsByOrganizer(organizerId: string): Promise<BillSumm
       status: bill.status,
       created_at: bill.created_at,
       participant_count: parts.length,
-      confirmed_count: parts.filter(p => p.status === 'CONFIRMED').length,
+      confirmed_count: confirmed.length,
+      confirmed_amount_cents: confirmed.reduce((s, p) => s + p.amount_cents, 0),
     }
   })
 }

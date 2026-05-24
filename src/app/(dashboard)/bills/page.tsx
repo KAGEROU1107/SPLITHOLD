@@ -51,12 +51,15 @@ export default async function BillsPage() {
         <div className="space-y-3">
           {bills.map(bill => {
             const pct = bill.participant_count > 0 ? Math.round((bill.confirmed_count / bill.participant_count) * 100) : 0
+            const remainingCents = bill.total_amount_cents - bill.confirmed_amount_cents
+            const allPaid = bill.confirmed_count === bill.participant_count && bill.participant_count > 0
             return (
               <Link
                 key={bill.id}
                 href={`/bills/${bill.id}`}
                 className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-primary/40 hover:shadow-md transition-all"
               >
+                {/* Top row: title + status */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">{bill.title}</p>
@@ -68,17 +71,35 @@ export default async function BillsPage() {
                     {bill.status}
                   </span>
                 </div>
-                <div className="mt-3 space-y-1">
+
+                {/* Progress bar */}
+                <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>{bill.confirmed_count} of {bill.participant_count} confirmed</span>
-                    <span>{pct}%</span>
+                    <span className="font-medium text-brand-primary">{pct}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-100">
                     <div
-                      className="h-1.5 rounded-full bg-brand-primary transition-all"
+                      className={`h-1.5 rounded-full transition-all duration-500 ${allPaid ? 'bg-emerald-500' : 'bg-brand-primary'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
+                </div>
+
+                {/* RM collected / remaining */}
+                <div className="mt-3 flex items-center gap-3 text-xs">
+                  <span className={`font-semibold ${allPaid ? 'text-emerald-600' : 'text-slate-700'}`}>
+                    {fmtRm(bill.confirmed_amount_cents)} collected
+                  </span>
+                  {remainingCents > 0 && (
+                    <>
+                      <span className="text-slate-200">|</span>
+                      <span className="text-amber-600 font-medium">{fmtRm(remainingCents)} remaining</span>
+                    </>
+                  )}
+                  {allPaid && (
+                    <span className="ml-auto text-emerald-600 font-semibold">All paid ✓</span>
+                  )}
                 </div>
               </Link>
             )

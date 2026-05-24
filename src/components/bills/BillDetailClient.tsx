@@ -26,6 +26,10 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const confirmed = bill.participants.filter(p => p.status === 'CONFIRMED').length
   const total = bill.participants.length
   const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0
+  const confirmedCents = bill.participants
+    .filter(p => p.status === 'CONFIRMED')
+    .reduce((s, p) => s + p.amount_cents, 0)
+  const remainingCents = bill.total_amount_cents - confirmedCents
 
   function copyLink(token: string) {
     const url = `${appUrl}/pay/${token}`
@@ -84,12 +88,29 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
         </div>
         <div className="h-2 rounded-full bg-slate-100">
           <div
-            className="h-2 rounded-full bg-brand-primary transition-all duration-500"
+            className={`h-2 rounded-full transition-all duration-500 ${confirmed === total && total > 0 ? 'bg-emerald-500' : 'bg-brand-primary'}`}
             style={{ width: `${pct}%` }}
           />
         </div>
+
+        {/* RM breakdown */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="rounded-xl bg-emerald-50 px-4 py-3">
+            <p className="text-xs text-emerald-600 font-medium">Collected</p>
+            <p className="mt-0.5 text-lg font-bold text-emerald-700">
+              RM {(confirmedCents / 100).toFixed(2)}
+            </p>
+          </div>
+          <div className="rounded-xl bg-amber-50 px-4 py-3">
+            <p className="text-xs text-amber-600 font-medium">Remaining</p>
+            <p className={`mt-0.5 text-lg font-bold ${remainingCents > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+              RM {(remainingCents / 100).toFixed(2)}
+            </p>
+          </div>
+        </div>
+
         {confirmed === total && total > 0 && (
-          <p className="text-xs text-emerald-600 font-medium">All payments confirmed!</p>
+          <p className="text-xs text-emerald-600 font-semibold">All payments confirmed!</p>
         )}
       </div>
 
