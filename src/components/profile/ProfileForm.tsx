@@ -49,8 +49,8 @@ export default function ProfileForm({ name, email }: Props) {
       <div className="border-t border-slate-200 pt-4">
         <p className="mb-3 text-sm font-medium text-slate-700">Change Password <span className="font-normal text-slate-400">(optional)</span></p>
         <div className="space-y-3">
-          <input type="password" placeholder="Current password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} className={inputCls} />
-          <input type="password" placeholder="New password (min 8 chars)" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))} className={inputCls} />
+          <input type="password" autoComplete="current-password" placeholder="Current password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} className={inputCls} />
+          <input type="password" autoComplete="new-password" placeholder="New password (min 8 chars)" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))} className={inputCls} />
         </div>
       </div>
       <button type="submit" disabled={loading} className="flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50">
