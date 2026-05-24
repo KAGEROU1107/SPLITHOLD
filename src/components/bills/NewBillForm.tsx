@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Loader2, CreditCard, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Participant {
   name: string
@@ -21,14 +21,24 @@ function centsToRm(cents: number): string {
   return (cents / 100).toFixed(2)
 }
 
+const BANKS = [
+  'Maybank', 'CIMB Bank', 'Public Bank', 'RHB Bank', 'Hong Leong Bank',
+  'AmBank', 'Bank Islam', 'Bank Rakyat', 'OCBC Bank', 'Standard Chartered',
+  'HSBC Bank', 'Alliance Bank', 'Affin Bank', 'Agrobank', 'BSN',
+]
+
 export default function NewBillForm() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
+  const [showBank, setShowBank] = useState(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [totalRm, setTotalRm] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [bankAccountNumber, setBankAccountNumber] = useState('')
+  const [bankAccountName, setBankAccountName] = useState('')
   const [participants, setParticipants] = useState<Participant[]>([
     { name: '', email: '', amount_cents: 0, amountRm: '' },
   ])
@@ -81,6 +91,13 @@ export default function NewBillForm() {
       return
     }
 
+    // Bank details — all 3 must be filled if any one is filled
+    const bankFilled = [bankName, bankAccountNumber, bankAccountName].filter(Boolean).length
+    if (bankFilled > 0 && bankFilled < 3) {
+      toast.error('Fill in all bank details or leave them all blank')
+      return
+    }
+
     setSubmitting(true)
     try {
       const res = await fetch('/api/bills', {
@@ -91,6 +108,9 @@ export default function NewBillForm() {
           description: description.trim() || undefined,
           total_amount_cents: totalCents,
           due_date: dueDate,
+          bank_name: bankName.trim() || undefined,
+          bank_account_number: bankAccountNumber.trim() || undefined,
+          bank_account_name: bankAccountName.trim() || undefined,
           participants: participants.map(p => ({
             name: p.name.trim(),
             email: p.email.trim() || undefined,
@@ -115,6 +135,7 @@ export default function NewBillForm() {
   }
 
   const today = new Date().toISOString().split('T')[0]
+  const inputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -130,7 +151,7 @@ export default function NewBillForm() {
             onChange={e => setTitle(e.target.value)}
             placeholder="e.g. Langkawi Trip, Team Dinner"
             maxLength={100}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+            className={inputCls}
           />
         </div>
 
@@ -156,7 +177,7 @@ export default function NewBillForm() {
               placeholder="0.00"
               min="0.01"
               step="0.01"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+              className={inputCls}
             />
           </div>
           <div>
@@ -166,10 +187,68 @@ export default function NewBillForm() {
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
               min={today}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+              className={inputCls}
             />
           </div>
         </div>
+      </div>
+
+      {/* Bank account details */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowBank(v => !v)}
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-brand-primary" />
+            <span className="text-sm font-semibold text-slate-700">Bank Transfer Details</span>
+            <span className="text-xs text-slate-400">(optional — members will see this to transfer payment)</span>
+          </div>
+          {showBank ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+        </button>
+
+        {showBank && (
+          <div className="px-6 pb-6 space-y-4 border-t border-slate-100">
+            <p className="pt-4 text-xs text-slate-500">
+              If filled, members must upload payment proof before confirming. Leave blank to skip proof upload.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Bank Name</label>
+              <select
+                value={bankName}
+                onChange={e => setBankName(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Select bank...</option>
+                {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
+              <input
+                type="text"
+                value={bankAccountNumber}
+                onChange={e => setBankAccountNumber(e.target.value)}
+                placeholder="e.g. 1234 5678 9012"
+                maxLength={30}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Account Holder Name</label>
+              <input
+                type="text"
+                value={bankAccountName}
+                onChange={e => setBankAccountName(e.target.value)}
+                placeholder="e.g. Ahmad Razif bin Zainudin"
+                maxLength={100}
+                className={inputCls}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Participants */}

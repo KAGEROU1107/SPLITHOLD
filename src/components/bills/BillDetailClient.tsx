@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Copy, CheckCircle2, Clock, ChevronLeft, Loader2 } from 'lucide-react'
+import { Copy, CheckCircle2, Clock, ChevronLeft, Loader2, ExternalLink, Download, FileText } from 'lucide-react'
 import Link from 'next/link'
 import type { BillWithParticipants } from '@/lib/splithold-db'
 
@@ -19,9 +19,14 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const [bill, setBill] = useState(initialBill)
   const [togglingStatus, setTogglingStatus] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const confirmed = bill.participants.filter(p => p.status === 'CONFIRMED').length
   const total = bill.participants.length
@@ -62,6 +67,34 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     }
   }
 
+  async function viewProof(participantId: string) {
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
+      if (!res.ok) { toast.error('Could not load proof'); return }
+      const { url } = await res.json()
+      window.open(url, '_blank', 'noopener')
+    } catch {
+      toast.error('Connection error')
+    }
+  }
+
+  async function downloadProof(participantId: string, participantName: string) {
+    setDownloadingId(participantId)
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
+      if (!res.ok) { toast.error('Could not load proof'); return }
+      const { url } = await res.json()
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `proof-${participantName.replace(/\s+/g, '-')}`
+      a.click()
+    } catch {
+      toast.error('Connection error')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-start gap-4">
@@ -80,6 +113,27 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
         </div>
       </div>
 
+      {/* Bank details (read-only) */}
+      {bill.bank_name && bill.bank_account_number && bill.bank_account_name && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 space-y-2">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Bank Transfer Details</p>
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="text-xs text-slate-400">Bank</p>
+              <p className="font-medium text-slate-800">{bill.bank_name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Account No.</p>
+              <p className="font-mono font-semibold text-slate-900">{bill.bank_account_number}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Account Name</p>
+              <p className="font-medium text-slate-800">{bill.bank_account_name}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
         <div className="flex justify-between text-sm">
@@ -92,14 +146,10 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
             style={{ width: `${pct}%` }}
           />
         </div>
-
-        {/* RM breakdown */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="rounded-xl bg-emerald-50 px-4 py-3">
             <p className="text-xs text-emerald-600 font-medium">Collected</p>
-            <p className="mt-0.5 text-lg font-bold text-emerald-700">
-              RM {(confirmedCents / 100).toFixed(2)}
-            </p>
+            <p className="mt-0.5 text-lg font-bold text-emerald-700">RM {(confirmedCents / 100).toFixed(2)}</p>
           </div>
           <div className="rounded-xl bg-amber-50 px-4 py-3">
             <p className="text-xs text-amber-600 font-medium">Remaining</p>
@@ -108,7 +158,6 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
             </p>
           </div>
         </div>
-
         {confirmed === total && total > 0 && (
           <p className="text-xs text-emerald-600 font-semibold">All payments confirmed!</p>
         )}
@@ -121,44 +170,89 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
         </div>
         <div className="divide-y divide-slate-100">
           {bill.participants.map(p => (
-            <div key={p.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate">{p.name}</p>
-                {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
-                <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
+            <div key={p.id} className="px-5 py-4 space-y-2">
+              <div className="flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 truncate">{p.name}</p>
+                  {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
+                  <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {p.status === 'CONFIRMED' ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Confirmed
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                      <Clock className="h-3.5 w-3.5" />
+                      Pending
+                    </span>
+                  )}
+
+                  {bill.status === 'ACTIVE' && p.status === 'PENDING' && (
+                    <button
+                      type="button"
+                      onClick={() => copyLink(p.payment_token)}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy link
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                {p.status === 'CONFIRMED' ? (
-                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Confirmed
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                    <Clock className="h-3.5 w-3.5" />
-                    Pending
-                  </span>
-                )}
-
-                {bill.status === 'ACTIVE' && p.status === 'PENDING' && (
-                  <button
-                    type="button"
-                    onClick={() => copyLink(p.payment_token)}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
-                  >
-                    <Copy className="h-3 w-3" />
-                    Copy link
-                  </button>
-                )}
-              </div>
+              {/* Confirmed timestamp + proof actions */}
+              {p.status === 'CONFIRMED' && (
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-slate-400">
+                    {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
+                  </p>
+                  {p.proof_url && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => viewProof(p.id)}
+                        className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View proof
+                      </button>
+                      <span className="text-slate-200">|</span>
+                      <button
+                        type="button"
+                        onClick={() => downloadProof(p.id, p.name)}
+                        disabled={downloadingId === p.id}
+                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                      >
+                        {downloadingId === p.id
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Download className="h-3 w-3" />
+                        }
+                        Download
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <Link
+          href={`/bills/${bill.id}/statement`}
+          target="_blank"
+          className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+        >
+          <FileText className="h-4 w-4" />
+          Penyata
+        </Link>
+
         <button
           type="button"
           onClick={toggleStatus}

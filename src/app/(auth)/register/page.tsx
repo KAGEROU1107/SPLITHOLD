@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -49,17 +50,35 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Full Name</label>
-            <input required value={form.name} onChange={set('name')} className={inputCls} placeholder="Your name" />
+            <input required value={form.name} onChange={set('name')} className={inputCls} placeholder="Your name" autoComplete="name" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Email</label>
-            <input type="email" required value={form.email} onChange={set('email')} className={inputCls} placeholder="you@example.com" />
+            <input type="email" required value={form.email} onChange={set('email')} className={inputCls} placeholder="you@example.com" autoComplete="email" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Password</label>
-            <input type="password" required value={form.password} onChange={set('password')} className={inputCls} placeholder="Min 8 characters" />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={form.password}
+                onChange={set('password')}
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+                placeholder="Min 8 characters"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <button

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2, CheckCircle2, Calendar, DollarSign } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Loader2, CheckCircle2, Calendar, DollarSign, Building2, Upload, X, FileImage } from 'lucide-react'
 import type { PublicParticipant } from '@/lib/splithold-db'
 
 interface Props {
@@ -18,18 +18,62 @@ function formatDate(dateStr: string) {
 }
 
 export default function PayConfirmClient({ participant, token }: Props) {
+  const hasBankDetails = !!(participant.bill.bank_name && participant.bill.bank_account_number && participant.bill.bank_account_name)
+
   const [status, setStatus] = useState<'idle' | 'confirming' | 'done' | 'error'>(
     participant.status === 'CONFIRMED' ? 'done' : 'idle'
   )
   const [errorMsg, setErrorMsg] = useState('')
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [copied, setCopied] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isAlreadyConfirmed = participant.status === 'CONFIRMED'
   const isBillClosed = participant.bill.status === 'CLOSED'
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large — max 5MB')
+      return
+    }
+    setProofFile(file)
+  }
+
+  function copyAccNumber() {
+    if (!participant.bill.bank_account_number) return
+    navigator.clipboard.writeText(participant.bill.bank_account_number).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   async function handleConfirm() {
+    if (hasBankDetails && !proofFile) {
+      setErrorMsg('Please upload your payment proof (screenshot / receipt) first.')
+      setStatus('error')
+      return
+    }
+
     setStatus('confirming')
+    setErrorMsg('')
+
     try {
-      const res = await fetch(`/api/pay/${token}`, { method: 'POST' })
+      let res: Response
+
+      if (proofFile) {
+        const formData = new FormData()
+        formData.append('proof', proofFile)
+        res = await fetch(`/api/pay/${token}`, { method: 'POST', body: formData })
+      } else {
+        res = await fetch(`/api/pay/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+      }
+
       const data = await res.json()
 
       if (res.ok) {
@@ -41,7 +85,7 @@ export default function PayConfirmClient({ participant, token }: Props) {
         setErrorMsg('This bill has been closed. Payment confirmation is no longer accepted.')
       } else {
         setStatus('error')
-        setErrorMsg('Something went wrong. Please try again.')
+        setErrorMsg(data.error ?? 'Something went wrong. Please try again.')
       }
     } catch {
       setStatus('error')
@@ -107,6 +151,81 @@ export default function PayConfirmClient({ participant, token }: Props) {
           <p className="font-semibold text-slate-900">{participant.name}</p>
         </div>
 
+        {/* Bank transfer details */}
+        {hasBankDetails && (
+          <div className="rounded-2xl border border-brand-primary/20 bg-brand-mist p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-brand-primary">
+              <Building2 className="h-4 w-4" />
+              Transfer to this account
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Bank</span>
+                <span className="font-medium text-slate-800">{participant.bill.bank_name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Account No.</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-slate-900 tracking-wider">
+                    {participant.bill.bank_account_number}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyAccNumber}
+                    className="text-xs text-brand-primary hover:underline"
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Name</span>
+                <span className="font-medium text-slate-800">{participant.bill.bank_account_name}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Proof upload */}
+        {hasBankDetails && !isBillClosed && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-700">
+              Upload Payment Proof <span className="text-red-500">*</span>
+            </p>
+            <p className="text-xs text-slate-400">Screenshot or photo of your transfer receipt. JPG, PNG or PDF. Max 5MB.</p>
+
+            {proofFile ? (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <FileImage className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="text-sm text-emerald-700 truncate flex-1">{proofFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => { setProofFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                  className="text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-4 text-sm text-slate-500 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Choose file
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </div>
+        )}
+
         {isBillClosed ? (
           <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-500 text-center">
             This bill has been closed. No further confirmations accepted.
@@ -130,7 +249,7 @@ export default function PayConfirmClient({ participant, token }: Props) {
             {status === 'confirming' ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Confirming...
+                {proofFile ? 'Uploading proof...' : 'Confirming...'}
               </>
             ) : (
               "I've Paid — Confirm"

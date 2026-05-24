@@ -9,6 +9,9 @@ export interface Bill {
   due_date: string
   status: 'ACTIVE' | 'CLOSED'
   created_at: string
+  bank_name: string | null
+  bank_account_number: string | null
+  bank_account_name: string | null
 }
 
 export interface BillParticipant {
@@ -20,6 +23,7 @@ export interface BillParticipant {
   payment_token: string
   status: 'PENDING' | 'CONFIRMED'
   confirmed_at: string | null
+  proof_url: string | null
   created_at: string
 }
 
@@ -32,6 +36,9 @@ export interface CreateBillInput {
   description?: string
   total_amount_cents: number
   due_date: string
+  bank_name?: string
+  bank_account_number?: string
+  bank_account_name?: string
   participants: Array<{
     name: string
     email?: string
@@ -58,6 +65,9 @@ export async function createBill(
       total_amount_cents: data.total_amount_cents,
       due_date: data.due_date,
       status: 'ACTIVE',
+      bank_name: data.bank_name ?? null,
+      bank_account_number: data.bank_account_number ?? null,
+      bank_account_name: data.bank_account_name ?? null,
     })
     .select()
     .single()
@@ -110,6 +120,9 @@ export async function getBillsByOrganizer(organizerId: string): Promise<BillSumm
       due_date: bill.due_date,
       status: bill.status,
       created_at: bill.created_at,
+      bank_name: bill.bank_name ?? null,
+      bank_account_number: bill.bank_account_number ?? null,
+      bank_account_name: bill.bank_account_name ?? null,
       participant_count: parts.length,
       confirmed_count: confirmed.length,
       confirmed_amount_cents: confirmed.reduce((s, p) => s + p.amount_cents, 0),
@@ -165,13 +178,16 @@ export interface PublicParticipant {
     due_date: string
     status: 'ACTIVE' | 'CLOSED'
     organizer_id: string
+    bank_name: string | null
+    bank_account_number: string | null
+    bank_account_name: string | null
   }
 }
 
 export async function getParticipantByToken(token: string): Promise<PublicParticipant | null> {
   const { data, error } = await supabaseAdmin
     .from('bill_participants')
-    .select('id, bill_id, name, amount_cents, status, confirmed_at, bills(title, description, total_amount_cents, due_date, status, organizer_id)')
+    .select('id, bill_id, name, amount_cents, status, confirmed_at, bills(title, description, total_amount_cents, due_date, status, organizer_id, bank_name, bank_account_number, bank_account_name)')
     .eq('payment_token', token)
     .single()
 
@@ -191,7 +207,7 @@ export async function getParticipantByToken(token: string): Promise<PublicPartic
   }
 }
 
-export async function confirmPayment(token: string): Promise<{ ok: boolean; reason?: string }> {
+export async function confirmPayment(token: string, proofUrl?: string): Promise<{ ok: boolean; reason?: string }> {
   const participant = await getParticipantByToken(token)
 
   if (!participant) return { ok: false, reason: 'not_found' }
@@ -200,7 +216,11 @@ export async function confirmPayment(token: string): Promise<{ ok: boolean; reas
 
   const { error } = await supabaseAdmin
     .from('bill_participants')
-    .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
+    .update({
+      status: 'CONFIRMED',
+      confirmed_at: new Date().toISOString(),
+      proof_url: proofUrl ?? null,
+    })
     .eq('payment_token', token)
 
   if (error) return { ok: false, reason: 'db_error' }
