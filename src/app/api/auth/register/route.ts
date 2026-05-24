@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { signToken, hashPassword } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
 import { setSessionCookie } from '@/lib/session-cookie'
@@ -36,16 +37,19 @@ export async function POST(request: NextRequest) {
     const { data: user, error } = await supabaseAdmin
       .from('users')
       .insert({
+        id: randomUUID(),
         name: name.trim(),
         email: email.toLowerCase().trim(),
         password_hash: passwordHash,
         role: 'ADMIN',
         is_active: true,
+        updated_at: new Date().toISOString(),
       })
       .select('id, name, email, avatar_url')
       .single()
 
     if (error || !user) {
+      console.error('Register insert error:', error?.message)
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
     }
 
