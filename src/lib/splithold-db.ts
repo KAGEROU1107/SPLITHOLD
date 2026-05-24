@@ -83,8 +83,9 @@ export async function createBill(
   data: CreateBillInput
 ): Promise<BillWithParticipants> {
   const isOpenMode = data.open_mode === true
+  const amountPerPax = data.amount_per_pax_cents ?? 0
   const totalCents = isOpenMode
-    ? ((data.max_participants ?? 0) * (data.amount_per_pax_cents ?? 0))
+    ? (data.max_participants ? data.max_participants * amountPerPax : amountPerPax)
     : data.total_amount_cents
 
   const { data: bill, error: billError } = await supabaseAdmin
@@ -100,8 +101,8 @@ export async function createBill(
       bank_account_number: data.bank_account_number ?? null,
       bank_account_name: data.bank_account_name ?? null,
       max_participants: isOpenMode ? (data.max_participants ?? null) : null,
-      amount_per_pax: isOpenMode ? (data.amount_per_pax_cents ?? null) : null,
-      registration_open: false,
+      amount_per_pax: isOpenMode ? amountPerPax : null,
+      registration_open: isOpenMode,
     })
     .select()
     .single()
