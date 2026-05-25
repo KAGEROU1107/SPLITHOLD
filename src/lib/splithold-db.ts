@@ -26,11 +26,13 @@ export interface BillParticipant {
   phone_number: string | null
   amount_cents: number
   payment_token: string
-  status: 'PENDING' | 'CONFIRMED'
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED'
   confirmed_at: string | null
   proof_url: string | null
   created_at: string
   joined_at: string | null
+  rejection_reason: string | null
+  reviewed_at: string | null
 }
 
 export interface BillWithParticipants extends Bill {
@@ -279,8 +281,9 @@ export interface PublicParticipant {
   bill_id: string
   name: string
   amount_cents: number
-  status: 'PENDING' | 'CONFIRMED'
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED'
   confirmed_at: string | null
+  rejection_reason: string | null
   bill: {
     title: string
     description: string | null
@@ -297,7 +300,7 @@ export interface PublicParticipant {
 export async function getParticipantByToken(token: string): Promise<PublicParticipant | null> {
   const { data, error } = await supabaseAdmin
     .from('bill_participants')
-    .select('id, bill_id, name, amount_cents, status, confirmed_at, bills(title, description, total_amount_cents, due_date, status, organizer_id, bank_name, bank_account_number, bank_account_name)')
+    .select('id, bill_id, name, amount_cents, status, confirmed_at, rejection_reason, bills(title, description, total_amount_cents, due_date, status, organizer_id, bank_name, bank_account_number, bank_account_name)')
     .eq('payment_token', token)
     .single()
 
@@ -313,8 +316,48 @@ export async function getParticipantByToken(token: string): Promise<PublicPartic
     amount_cents: data.amount_cents,
     status: data.status,
     confirmed_at: data.confirmed_at,
+    rejection_reason: data.rejection_reason ?? null,
     bill,
   }
+}
+
+export async function reviewParticipant(
+  billId: string,
+  organizerId: string,
+  participantId: string,
+  action: 'approve' | 'reject',
+  reason?: string
+): Promise<{ ok: boolean; reason?: string }> {
+  // Verify the participant belongs to the organizer's bill
+  const { data: participant, error: fetchError } = await supabaseAdmin
+    .from('bill_participants')
+    .select('id, status, bill_id, bills!inner(organizer_id)')
+    .eq('id', participantId)
+    .eq('bill_id', billId)
+    .single()
+
+  if (fetchError || !participant) return { ok: false, reason: 'not_found' }
+
+  const bill = Array.isArray(participant.bills) ? participant.bills[0] : participant.bills
+  if (!bill || (bill as { organizer_id: string }).organizer_id !== organizerId) {
+    return { ok: false, reason: 'forbidden' }
+  }
+
+  if (participant.status !== 'PENDING') return { ok: false, reason: 'already_reviewed' }
+
+  const newStatus = action === 'approve' ? 'CONFIRMED' : 'REJECTED'
+  const { error } = await supabaseAdmin
+    .from('bill_participants')
+    .update({
+      status: newStatus,
+      reviewed_at: new Date().toISOString(),
+      confirmed_at: action === 'approve' ? new Date().toISOString() : null,
+      rejection_reason: action === 'reject' ? (reason ?? null) : null,
+    })
+    .eq('id', participantId)
+
+  if (error) return { ok: false, reason: 'db_error' }
+  return { ok: true }
 }
 
 export async function confirmPayment(token: string, proofUrl?: string): Promise<{ ok: boolean; reason?: string }> {

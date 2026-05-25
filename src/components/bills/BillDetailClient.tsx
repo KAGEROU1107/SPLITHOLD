@@ -2,14 +2,20 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Copy, CheckCircle2, Clock, ChevronLeft, Loader2, ExternalLink, Download, FileText, Link2, UserPlus, Users } from 'lucide-react'
+import {
+  Copy, CheckCircle2, Clock, XCircle, ChevronLeft, Loader2,
+  ExternalLink, Download, FileText, Link2, UserPlus, Users,
+} from 'lucide-react'
 import Link from 'next/link'
-import type { BillWithParticipants } from '@/lib/splithold-db'
+import type { BillWithParticipants, BillParticipant } from '@/lib/splithold-db'
 
 interface Props {
   bill: BillWithParticipants
   appUrl: string
 }
+
+type RowMode = 'idle' | 'approve' | 'reject'
+type FilterTab = 'all' | 'pending' | 'confirmed' | 'rejected'
 
 function fmtRm(cents: number) {
   return `RM ${(cents / 100).toFixed(2)}`
@@ -23,15 +29,46 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function StatusBadge({ status }: { status: BillParticipant['status'] }) {
+  if (status === 'CONFIRMED') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Confirmed
+      </span>
+    )
+  }
+  if (status === 'REJECTED') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-red-500">
+        <XCircle className="h-3.5 w-3.5" />
+        Rejected
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+      <Clock className="h-3.5 w-3.5" />
+      Pending
+    </span>
+  )
+}
+
 export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const [bill, setBill] = useState(initialBill)
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [togglingReg, setTogglingReg] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [filterTab, setFilterTab] = useState<FilterTab>('all')
+  const [rowModes, setRowModes] = useState<Record<string, RowMode>>({})
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({})
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
 
   const isOpenMode = bill.amount_per_pax !== null
 
   const confirmed = bill.participants.filter(p => p.status === 'CONFIRMED').length
+  const pending = bill.participants.filter(p => p.status === 'PENDING').length
+  const rejected = bill.participants.filter(p => p.status === 'REJECTED').length
   const total = bill.participants.length
   const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0
   const confirmedCents = bill.participants
@@ -40,10 +77,22 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const remainingCents = isOpenMode
     ? (total * (bill.amount_per_pax ?? 0)) - confirmedCents
     : bill.total_amount_cents - confirmedCents
-
   const effectiveTotalCents = isOpenMode
     ? total * (bill.amount_per_pax ?? 0)
     : bill.total_amount_cents
+
+  const filteredParticipants = bill.participants.filter(p => {
+    if (filterTab === 'all') return true
+    return p.status === filterTab.toUpperCase()
+  })
+
+  function getRowMode(id: string): RowMode {
+    return rowModes[id] ?? 'idle'
+  }
+
+  function setRowMode(id: string, mode: RowMode) {
+    setRowModes(prev => ({ ...prev, [id]: mode }))
+  }
 
   function copyToClipboard(text: string, label = 'Copied!') {
     navigator.clipboard.writeText(text).then(() => {
@@ -106,6 +155,51 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     }
   }
 
+  async function reviewParticipant(
+    participantId: string,
+    action: 'approve' | 'reject',
+    reason?: string
+  ) {
+    setReviewingId(participantId)
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/participants/${participantId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason }),
+      })
+      if (res.status === 409) {
+        toast.error('Already reviewed')
+        setRowMode(participantId, 'idle')
+        return
+      }
+      if (!res.ok) {
+        toast.error('Failed — try again')
+        return
+      }
+      const newStatus = action === 'approve' ? 'CONFIRMED' : 'REJECTED'
+      setBill(prev => ({
+        ...prev,
+        participants: prev.participants.map(p =>
+          p.id === participantId
+            ? {
+                ...p,
+                status: newStatus,
+                confirmed_at: action === 'approve' ? new Date().toISOString() : null,
+                reviewed_at: new Date().toISOString(),
+                rejection_reason: action === 'reject' ? (reason ?? null) : null,
+              }
+            : p
+        ),
+      }))
+      setRowMode(participantId, 'idle')
+      toast.success(action === 'approve' ? 'Payment approved' : 'Payment rejected')
+    } catch {
+      toast.error('Connection error')
+    } finally {
+      setReviewingId(null)
+    }
+  }
+
   async function viewProof(participantId: string) {
     try {
       const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
@@ -133,6 +227,13 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
       setDownloadingId(null)
     }
   }
+
+  const tabs: { key: FilterTab; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: total },
+    { key: 'pending', label: 'Pending', count: pending },
+    { key: 'confirmed', label: 'Confirmed', count: confirmed },
+    { key: 'rejected', label: 'Rejected', count: rejected },
+  ]
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -212,7 +313,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
         </div>
       )}
 
-      {/* Bank details (read-only) */}
+      {/* Bank details */}
       {bill.bank_name && bill.bank_account_number && bill.bank_account_name && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 space-y-2">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Bank Transfer Details</p>
@@ -267,91 +368,202 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
 
       {/* Participants */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Participants</h2>
+        {/* Header + filter tabs */}
+        <div className="px-5 pt-4 pb-0 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-3">Participants</h2>
+          <div className="flex gap-1 overflow-x-auto pb-0 -mb-px">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFilterTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  filterTab === tab.key
+                    ? 'border-brand-primary text-brand-primary'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                    filterTab === tab.key ? 'bg-brand-mist text-brand-primary' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="divide-y divide-slate-100">
-          {bill.participants.length === 0 ? (
+
+        {/* Scrollable participant list */}
+        <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
+          {filteredParticipants.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-slate-400">
-              {isOpenMode
-                ? 'No participants yet. Open registration to let people join.'
-                : 'No participants.'
+              {filterTab === 'all'
+                ? (isOpenMode ? 'No participants yet.' : 'No participants.')
+                : `No ${filterTab} participants.`
               }
             </div>
           ) : (
-            bill.participants.map(p => (
-              <div key={p.id} className="px-5 py-4 space-y-2">
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{p.name}</p>
-                    {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
-                    {(p as { phone_number?: string | null }).phone_number && (
-                      <p className="text-xs text-slate-400 truncate">{(p as { phone_number?: string | null }).phone_number}</p>
-                    )}
-                    <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
+            filteredParticipants.map(p => {
+              const mode = getRowMode(p.id)
+              const isReviewing = reviewingId === p.id
+
+              return (
+                <div key={p.id} className="px-5 py-4 space-y-2">
+                  {/* Row: name + status + actions */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 truncate">{p.name}</p>
+                      {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
+                      {p.phone_number && (
+                        <p className="text-xs text-slate-400 truncate">{p.phone_number}</p>
+                      )}
+                      <p className="text-xs text-slate-500 mt-0.5">{fmtRm(p.amount_cents)}</p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <StatusBadge status={p.status} />
+
+                      {/* Idle actions — only for PENDING on ACTIVE bills */}
+                      {bill.status === 'ACTIVE' && p.status === 'PENDING' && mode === 'idle' && (
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setRowMode(p.id, 'approve')}
+                            className="flex items-center gap-1 rounded-lg border border-emerald-300 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRowMode(p.id, 'reject')}
+                            className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <XCircle className="h-3 w-3" />
+                            Reject
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyPayLink(p.payment_token)}
+                            className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-500 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    {p.status === 'CONFIRMED' ? (
-                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Confirmed
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                        <Clock className="h-3.5 w-3.5" />
-                        Pending
-                      </span>
-                    )}
-
-                    {bill.status === 'ACTIVE' && p.status === 'PENDING' && (
-                      <button
-                        type="button"
-                        onClick={() => copyPayLink(p.payment_token)}
-                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
-                      >
-                        <Copy className="h-3 w-3" />
-                        Copy link
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Confirmed timestamp + proof actions */}
-                {p.status === 'CONFIRMED' && (
-                  <div className="flex items-center justify-between pt-1">
-                    <p className="text-xs text-slate-400">
-                      {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
-                    </p>
-                    {p.proof_url && (
-                      <div className="flex items-center gap-2">
+                  {/* Approve confirmation inline */}
+                  {mode === 'approve' && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
+                      <p className="text-xs font-medium text-emerald-800">
+                        Approve {p.name}&apos;s payment of {fmtRm(p.amount_cents)}?
+                      </p>
+                      <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => viewProof(p.id)}
-                          className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
+                          disabled={isReviewing}
+                          onClick={() => reviewParticipant(p.id, 'approve')}
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                         >
-                          <ExternalLink className="h-3 w-3" />
-                          View proof
+                          {isReviewing ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                          Confirm
                         </button>
-                        <span className="text-slate-200">|</span>
                         <button
                           type="button"
-                          onClick={() => downloadProof(p.id, p.name)}
-                          disabled={downloadingId === p.id}
-                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                          disabled={isReviewing}
+                          onClick={() => setRowMode(p.id, 'idle')}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-white transition-colors disabled:opacity-50"
                         >
-                          {downloadingId === p.id
-                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <Download className="h-3 w-3" />
-                          }
-                          Download
+                          Cancel
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
+                    </div>
+                  )}
+
+                  {/* Reject with reason inline */}
+                  {mode === 'reject' && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-2">
+                      <p className="text-xs font-medium text-red-800">Reject {p.name}&apos;s payment</p>
+                      <input
+                        type="text"
+                        placeholder="Reason (optional)"
+                        value={rejectReasons[p.id] ?? ''}
+                        onChange={e => setRejectReasons(prev => ({ ...prev, [p.id]: e.target.value }))}
+                        className="w-full rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-400"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => reviewParticipant(p.id, 'reject', rejectReasons[p.id] || undefined)}
+                          className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                          {isReviewing ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => { setRowMode(p.id, 'idle'); setRejectReasons(prev => ({ ...prev, [p.id]: '' })) }}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-white transition-colors disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirmed: timestamp + proof */}
+                  {p.status === 'CONFIRMED' && (
+                    <div className="flex items-center justify-between pt-1">
+                      <p className="text-xs text-slate-400">
+                        {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
+                      </p>
+                      {p.proof_url && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => viewProof(p.id)}
+                            className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View proof
+                          </button>
+                          <span className="text-slate-200">|</span>
+                          <button
+                            type="button"
+                            onClick={() => downloadProof(p.id, p.name)}
+                            disabled={downloadingId === p.id}
+                            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                          >
+                            {downloadingId === p.id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <Download className="h-3 w-3" />
+                            }
+                            Download
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Rejected: reason */}
+                  {p.status === 'REJECTED' && p.rejection_reason && (
+                    <p className="text-xs text-red-500 pt-1">
+                      Reason: {p.rejection_reason}
+                    </p>
+                  )}
+                  {p.status === 'REJECTED' && !p.rejection_reason && (
+                    <p className="text-xs text-slate-400 pt-1">No reason provided</p>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
       </div>

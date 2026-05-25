@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Loader2, CheckCircle2, Calendar, DollarSign, Building2, Upload, X, FileImage } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Calendar, DollarSign, Building2, Upload, X, FileImage } from 'lucide-react'
 import type { PublicParticipant } from '@/lib/splithold-db'
 
 interface Props {
@@ -29,6 +29,7 @@ export default function PayConfirmClient({ participant, token }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isAlreadyConfirmed = participant.status === 'CONFIRMED'
+  const isRejected = participant.status === 'REJECTED'
   const isBillClosed = participant.bill.status === 'CLOSED'
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -91,6 +92,36 @@ export default function PayConfirmClient({ participant, token }: Props) {
       setStatus('error')
       setErrorMsg('Connection error. Please check your internet and try again.')
     }
+  }
+
+  if (isRejected) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="rounded-3xl border border-red-200 bg-white p-8 shadow-lg text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="rounded-full bg-red-100 p-4">
+              <XCircle className="h-10 w-10 text-red-500" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Payment Rejected</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Your payment for <span className="font-semibold text-slate-700">{participant.bill.title}</span> has been rejected by the organizer.
+            </p>
+            {participant.rejection_reason ? (
+              <div className="mt-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+                <p className="text-xs font-medium text-red-600 mb-1">Reason</p>
+                <p className="text-sm text-red-800">{participant.rejection_reason}</p>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-slate-400">No reason was provided.</p>
+            )}
+          </div>
+          <p className="text-xs text-slate-400">Contact the organizer if you think this is a mistake.</p>
+        </div>
+        <p className="mt-6 text-center text-xs text-slate-400">Powered by SplitHold</p>
+      </div>
+    )
   }
 
   if (status === 'done' || isAlreadyConfirmed) {
