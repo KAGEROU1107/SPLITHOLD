@@ -521,7 +521,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
                   {/* Confirmed: timestamp + proof */}
                   {p.status === 'CONFIRMED' && (
                     <div className="flex items-center justify-between pt-1">
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-400" suppressHydrationWarning>
                         {p.confirmed_at ? `Confirmed ${formatDateTime(p.confirmed_at)}` : 'Confirmed'}
                       </p>
                       {p.proof_url && (
