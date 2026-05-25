@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { createBill, getBillsByOrganizer, type CreateBillInput } from '@/lib/splithold-db'
+import { logActivity } from '@/lib/activity'
 
 export async function GET() {
   const session = await getSession()
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const bill = await createBill(session.id, input)
+    await logActivity(session.id, session.name, 'bill_created', 'bill', bill.id, { title: bill.title })
     return NextResponse.json({ bill }, { status: 201 })
   } catch {
     return NextResponse.json({ error: 'Failed to create bill' }, { status: 500 })

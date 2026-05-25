@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { updateBillStatus } from '@/lib/splithold-db'
+import { logActivity } from '@/lib/activity'
 
 export async function PATCH(
   request: NextRequest,
@@ -18,6 +19,11 @@ export async function PATCH(
     }
 
     await updateBillStatus(id, session.id, body.status)
+    await logActivity(
+      session.id, session.name,
+      body.status === 'CLOSED' ? 'bill_closed' : 'bill_reopened',
+      'bill', id
+    )
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Failed to update bill status' }, { status: 500 })

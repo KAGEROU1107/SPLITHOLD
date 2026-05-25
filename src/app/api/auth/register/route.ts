@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.toLowerCase().trim(),
         password_hash: passwordHash,
-        role: 'ADMIN',
+        role: 'ORGANIZER',
         is_active: true,
         updated_at: new Date().toISOString(),
       })
-      .select('id, name, email, avatar_url')
+      .select('id, name, email, avatar_url, role')
       .single()
 
     if (error || !user) {
@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
       name: user.name,
       email: user.email,
       avatarUrl: user.avatar_url ?? null,
+      role: user.role,
+      mustChangePassword: false,
     })
 
     const response = NextResponse.json({ redirect: '/dashboard' })

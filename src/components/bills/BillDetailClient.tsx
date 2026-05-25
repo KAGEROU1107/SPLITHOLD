@@ -4,10 +4,11 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   Copy, CheckCircle2, Clock, XCircle, ChevronLeft, Loader2,
-  ExternalLink, Download, FileText, Link2, UserPlus, Users,
+  ExternalLink, Download, FileText, Link2, UserPlus, Users, Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { BillWithParticipants, BillParticipant } from '@/lib/splithold-db'
+import DeleteBillModal from './DeleteBillModal'
 
 interface Props {
   bill: BillWithParticipants
@@ -59,6 +60,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [togglingReg, setTogglingReg] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [filterTab, setFilterTab] = useState<FilterTab>('all')
   const [rowModes, setRowModes] = useState<Record<string, RowMode>>({})
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({})
@@ -593,6 +595,33 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
           {bill.status === 'ACTIVE' ? 'Close Bill' : 'Re-open Bill'}
         </button>
       </div>
+
+      {/* Danger zone */}
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-red-700">Delete this bill</p>
+            <p className="mt-0.5 text-xs text-red-500">Permanently removes the bill and all participants. You must download all records first.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {showDeleteModal && (
+        <DeleteBillModal
+          billId={bill.id}
+          billTitle={bill.title}
+          confirmedParticipants={bill.participants.filter(p => p.status === 'CONFIRMED')}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   )
 }

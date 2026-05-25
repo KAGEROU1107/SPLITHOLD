@@ -17,6 +17,7 @@ export default function AppShell({ user, children }: AppShellProps) {
     <div className="flex min-h-screen">
       <Sidebar
         userName={user.name}
+        role={user.role}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

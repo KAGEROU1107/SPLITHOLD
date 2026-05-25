@@ -360,6 +360,37 @@ export async function reviewParticipant(
   return { ok: true }
 }
 
+export async function deleteBill(
+  billId: string,
+  organizerId: string | null
+): Promise<{ ok: boolean; reason?: string; title?: string; participantCount?: number }> {
+  const { data: bill, error: fetchErr } = await supabaseAdmin
+    .from('bills')
+    .select('id, title, organizer_id, participants:bill_participants(id)')
+    .eq('id', billId)
+    .single()
+
+  if (fetchErr || !bill) return { ok: false, reason: 'not_found' }
+
+  // null organizerId = admin bypass
+  if (organizerId !== null && bill.organizer_id !== organizerId) {
+    return { ok: false, reason: 'forbidden' }
+  }
+
+  const { error: deleteErr } = await supabaseAdmin
+    .from('bills')
+    .delete()
+    .eq('id', billId)
+
+  if (deleteErr) return { ok: false, reason: 'db_error' }
+
+  return {
+    ok: true,
+    title: bill.title,
+    participantCount: (bill.participants as unknown[]).length,
+  }
+}
+
 export async function confirmPayment(token: string, proofUrl?: string): Promise<{ ok: boolean; reason?: string }> {
   const participant = await getParticipantByToken(token)
 

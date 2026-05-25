@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .select('id, name, email, password_hash, avatar_url, is_active')
+      .select('id, name, email, password_hash, avatar_url, is_active, role, must_change_password, reset_token, reset_token_expiry')
       .eq('email', email.toLowerCase().trim())
       .single()
 
@@ -32,7 +32,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account is inactive' }, { status: 403 })
     }
 
-    const valid = await comparePassword(password, user.password_hash)
+    let valid = await comparePassword(password, user.password_hash)
+    let mustChangePassword = user.must_change_password ?? false
+
+    // Try temp password (reset_token) if regular password failed
+    if (!valid && user.reset_token && user.reset_token_expiry) {
+      const expiry = new Date(user.reset_token_expiry)
+      if (expiry > new Date()) {
+        const tempValid = await comparePassword(password, user.reset_token)
+        if (tempValid) {
+          valid = true
+          mustChangePassword = true
+          await supabaseAdmin
+            .from('users')
+            .update({ reset_token: null, reset_token_expiry: null, must_change_password: true })
+            .eq('id', user.id)
+        }
+      }
+    }
+
     if (!valid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
@@ -42,6 +60,8 @@ export async function POST(request: NextRequest) {
       name: user.name,
       email: user.email,
       avatarUrl: user.avatar_url ?? null,
+      role: user.role ?? 'ORGANIZER',
+      mustChangePassword,
     })
 
     const response = NextResponse.json({ redirect: '/dashboard' })

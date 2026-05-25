@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Receipt, PlusCircle, User, X } from 'lucide-react'
+import { LayoutDashboard, Receipt, PlusCircle, User, X, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import BrandMark from '@/components/brand/BrandMark'
 
@@ -15,11 +15,12 @@ const NAV = [
 
 interface SidebarProps {
   userName: string
+  role: string
   open: boolean
   onClose: () => void
 }
 
-export default function Sidebar({ userName, open, onClose }: SidebarProps) {
+export default function Sidebar({ userName, role, open, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   const sidebar = (
@@ -51,6 +52,21 @@ export default function Sidebar({ userName, open, onClose }: SidebarProps) {
             </Link>
           )
         })}
+        {role === 'ADMIN' && (
+          <Link
+            href="/admin"
+            onClick={onClose}
+            className={cn(
+              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors mt-2 border-t border-white/10 pt-4',
+              pathname.startsWith('/admin')
+                ? 'bg-brand-primary text-white'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+            )}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            Admin Panel
+          </Link>
+        )}
       </nav>
 
       <div className="border-t border-white/10 px-5 py-4">

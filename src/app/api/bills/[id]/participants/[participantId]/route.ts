@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { reviewParticipant } from '@/lib/splithold-db'
+import { logActivity } from '@/lib/activity'
 
 export async function PATCH(
   req: NextRequest,
@@ -34,6 +35,13 @@ export async function PATCH(
     if (result.reason === 'already_reviewed') return NextResponse.json({ error: 'Already reviewed' }, { status: 409 })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
+
+  await logActivity(
+    user.id, user.name,
+    action === 'approve' ? 'payment_approved' : 'payment_rejected',
+    'participant', participantId,
+    { bill_id: billId }
+  )
 
   return NextResponse.json({ ok: true })
 }

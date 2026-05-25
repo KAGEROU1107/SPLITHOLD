@@ -7,6 +7,8 @@ export type SessionUser = {
   name: string
   email: string
   avatarUrl: string | null
+  role: string
+  mustChangePassword: boolean
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -22,5 +24,7 @@ export async function getSession(): Promise<SessionUser | null> {
     name: payload.name,
     email: payload.email,
     avatarUrl: payload.avatarUrl,
+    role: payload.role ?? 'ORGANIZER',
+    mustChangePassword: payload.mustChangePassword ?? false,
   }
 }

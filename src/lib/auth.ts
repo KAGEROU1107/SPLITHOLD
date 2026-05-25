@@ -6,6 +6,8 @@ export interface JwtPayload {
   name: string
   email: string
   avatarUrl: string | null
+  role: string
+  mustChangePassword: boolean
 }
 
 function getSecret(): Uint8Array {
