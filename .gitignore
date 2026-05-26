@@ -72,3 +72,18 @@ coverage/
 *.pem
 .cache/
 .claude/
+
+.vercel
+
+# ────────────────────────────────────────────
+# Internal AI scaffolding — never ship these
+# ────────────────────────────────────────────
+WORKDRAFT.md
+WORKFLOW.md
+MEMORY_STATE.md
+CLAUDE_HANDOFF.md
+BLUEPRINT.md
+IMPLEMENTATION_PLAN.md
+PATCHLOG.md
+PHASE_TRACKER.md
+docs/superpowers/
