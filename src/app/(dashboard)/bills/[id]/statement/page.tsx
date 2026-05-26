@@ -107,6 +107,7 @@ export default async function StatementPage({
                 <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">No.</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">No. Tel</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Amount</th>
                 <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Confirmed At</th>
@@ -118,6 +119,7 @@ export default async function StatementPage({
                   <td className="py-3 px-4 text-slate-400">{i + 1}</td>
                   <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{p.name}</td>
                   <td className="py-3 px-4 text-slate-500">{p.email ?? '—'}</td>
+                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{p.phone_number ?? '—'}</td>
                   <td className="py-3 px-4 text-right font-semibold text-slate-800 whitespace-nowrap">{fmtRm(p.amount_cents)}</td>
                   <td className="py-3 px-4 text-center">
                     {p.status === 'CONFIRMED' ? (
@@ -143,7 +145,7 @@ export default async function StatementPage({
             {/* Totals row */}
             <tfoot>
               <tr className="border-t-2 border-slate-200 bg-slate-50">
-                <td colSpan={3} className="py-3 px-4 text-sm font-semibold text-slate-700 whitespace-nowrap">
+                <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-slate-700 whitespace-nowrap">
                   {confirmedParts.length} confirmed · {pendingParts.length} pending
                 </td>
                 <td className="py-3 px-4 text-right font-bold text-slate-900 whitespace-nowrap">{fmtRm(bill.total_amount_cents)}</td>
