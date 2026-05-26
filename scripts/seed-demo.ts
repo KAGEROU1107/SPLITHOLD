@@ -3,7 +3,7 @@
  * Run: npx tsx scripts/seed-demo.ts
  * Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY in .env.local
  *
- * Creates demo@splithold.local / SplitHoldDemo123!
+ * Creates krackeddev@splithold.local / KrackedDev2026!
  * with one "Langkawi Trip" bill (3/5 confirmed).
  */
 
@@ -25,9 +25,9 @@ if (!supabaseUrl || !serviceKey) {
 
 const db = createClient(supabaseUrl, serviceKey)
 
-const DEMO_EMAIL = 'demo@splithold.local'
-const DEMO_PASSWORD = 'SplitHoldDemo123!'
-const DEMO_NAME = 'Demo Organizer'
+const DEMO_EMAIL = 'krackeddev@splithold.local'
+const DEMO_PASSWORD = 'KrackedDev2026!'
+const DEMO_NAME = 'Kracked Dev'
 
 async function seed() {
   console.log('Seeding demo data...')
@@ -50,7 +50,7 @@ async function seed() {
         email: DEMO_EMAIL,
         password_hash: passwordHash,
         name: DEMO_NAME,
-        role: 'ADMIN',
+        role: 'ORGANIZER',
         updated_at: now,
       })
       .select('id')

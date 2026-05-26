@@ -5,7 +5,7 @@
 SplitHold is a focused bill-collection tool for organisers — create a bill, generate a unique payment link per person, share it, and watch confirmations come in. Members confirm with one tap. No account. No friction.
 
 **Live demo:** [splithold.vercel.app](https://splithold.vercel.app)  
-**Demo login:** `demo@splithold.local` / `SplitHoldDemo123!`
+**Demo login:** `krackeddev@splithold.local` / `KrackedDev2026!`
 
 ---
 
@@ -160,7 +160,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 `npm run seed:demo` creates:
 
-- **Account:** `demo@splithold.local` / `SplitHoldDemo123!`
+- **Account:** `krackeddev@splithold.local` / `KrackedDev2026!`
 - **Bill:** "Langkawi Trip" — RM 1,500 total, 5 participants at RM 300 each
 - **Status:** 3 confirmed (Adam, Amir, Sarah) · 2 pending (Mei, Daniel)
 

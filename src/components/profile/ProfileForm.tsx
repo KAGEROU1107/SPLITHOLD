@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
 export default function ProfileForm({ name, email }: Props) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name, newPassword: '', currentPassword: '' })
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNew, setShowNew] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,8 +51,42 @@ export default function ProfileForm({ name, email }: Props) {
       <div className="border-t border-slate-200 pt-4">
         <p className="mb-3 text-sm font-medium text-slate-700">Change Password <span className="font-normal text-slate-400">(optional)</span></p>
         <div className="space-y-3">
-          <input type="password" autoComplete="current-password" placeholder="Current password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} className={inputCls} />
-          <input type="password" autoComplete="new-password" placeholder="New password (min 8 chars)" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))} className={inputCls} />
+          <div className="relative">
+            <input
+              type={showCurrent ? 'text' : 'password'}
+              autoComplete="current-password"
+              placeholder="Current password"
+              value={form.currentPassword}
+              onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
+              className={`${inputCls} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+              tabIndex={-1}
+            >
+              {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <div className="relative">
+            <input
+              type={showNew ? 'text' : 'password'}
+              autoComplete="new-password"
+              placeholder="New password (min 8 chars)"
+              value={form.newPassword}
+              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
+              className={`${inputCls} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNew(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+              tabIndex={-1}
+            >
+              {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </div>
       <button type="submit" disabled={loading} className="flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50">
