@@ -91,7 +91,7 @@ async function seed() {
   console.log(`Created bill: ${bill.title} (id: ${bill.id})`)
 
   const participants = [
-    { name: 'Kagerou', email: 'kagerou@example.com', amount_cents: 30000, confirm: true },
+    { name: 'Adam', email: 'adam@example.com', amount_cents: 30000, confirm: true },
     { name: 'Amir', email: 'amir@example.com', amount_cents: 30000, confirm: true },
     { name: 'Sarah', email: 'sarah@example.com', amount_cents: 30000, confirm: true },
     { name: 'Mei', email: 'mei@example.com', amount_cents: 30000, confirm: false },
