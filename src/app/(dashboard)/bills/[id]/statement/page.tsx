@@ -48,13 +48,13 @@ export default async function StatementPage({
 
       <main className="min-h-screen bg-white p-8 max-w-3xl mx-auto print:p-0 print:max-w-full">
         {/* Header */}
-        <div className="flex items-start justify-between border-b-2 border-brand-primary pb-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b-2 border-brand-primary pb-6 mb-6">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] text-brand-primary uppercase">SplitHold</p>
             <h1 className="mt-1 text-3xl font-extrabold text-slate-900">Penyata Bayaran</h1>
             <p className="mt-1 text-sm text-slate-500">Payment Statement</p>
           </div>
-          <div className="text-right text-sm text-slate-500 space-y-0.5">
+          <div className="text-left sm:text-right text-sm text-slate-500 space-y-0.5">
             <p className="font-semibold text-slate-800">{bill.title}</p>
             <p>Due: {formatDate(bill.due_date)}</p>
             <p>Generated: {generatedAt}</p>
@@ -76,7 +76,7 @@ export default async function StatementPage({
         {bill.bank_name && bill.bank_account_number && bill.bank_account_name && (
           <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Bank Transfer Details</p>
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div><p className="text-xs text-slate-400">Bank</p><p className="font-medium">{bill.bank_name}</p></div>
               <div><p className="text-xs text-slate-400">Account No.</p><p className="font-mono font-semibold">{bill.bank_account_number}</p></div>
               <div><p className="text-xs text-slate-400">Account Name</p><p className="font-medium">{bill.bank_account_name}</p></div>
@@ -85,7 +85,7 @@ export default async function StatementPage({
         )}
 
         {/* Summary cards */}
-        <div className="grid grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
             { label: 'Total Bill', value: fmtRm(bill.total_amount_cents), color: 'text-slate-900' },
             { label: 'Collected', value: fmtRm(confirmedCents), color: 'text-emerald-700' },
@@ -100,54 +100,60 @@ export default async function StatementPage({
         </div>
 
         {/* Participants table */}
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">No.</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
-              <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed At</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {bill.participants.map((p, i) => (
-              <tr key={p.id} className={p.status === 'CONFIRMED' ? 'bg-white' : 'bg-slate-50/50'}>
-                <td className="py-3 px-4 text-slate-400">{i + 1}</td>
-                <td className="py-3 px-4 font-medium text-slate-900">{p.name}</td>
-                <td className="py-3 px-4 text-slate-500">{p.email ?? '—'}</td>
-                <td className="py-3 px-4 text-right font-semibold text-slate-800">{fmtRm(p.amount_cents)}</td>
-                <td className="py-3 px-4 text-center">
-                  {p.status === 'CONFIRMED' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                      ✓ Confirmed
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                      ○ Pending
-                    </span>
-                  )}
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="min-w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">No.</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Amount</th>
+                <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Confirmed At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {bill.participants.map((p, i) => (
+                <tr key={p.id} className={p.status === 'CONFIRMED' ? 'bg-white' : 'bg-slate-50/50'}>
+                  <td className="py-3 px-4 text-slate-400">{i + 1}</td>
+                  <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{p.name}</td>
+                  <td className="py-3 px-4 text-slate-500">{p.email ?? '—'}</td>
+                  <td className="py-3 px-4 text-right font-semibold text-slate-800 whitespace-nowrap">{fmtRm(p.amount_cents)}</td>
+                  <td className="py-3 px-4 text-center">
+                    {p.status === 'CONFIRMED' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 whitespace-nowrap">
+                        ✓ Confirmed
+                      </span>
+                    ) : p.status === 'REJECTED' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 whitespace-nowrap">
+                        ✕ Rejected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 whitespace-nowrap">
+                        ○ Pending
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-slate-400 text-xs whitespace-nowrap">
+                    {p.confirmed_at ? formatDateTime(p.confirmed_at) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {/* Totals row */}
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-slate-50">
+                <td colSpan={3} className="py-3 px-4 text-sm font-semibold text-slate-700 whitespace-nowrap">
+                  {confirmedParts.length} confirmed · {pendingParts.length} pending
                 </td>
-                <td className="py-3 px-4 text-slate-400 text-xs">
-                  {p.confirmed_at ? formatDateTime(p.confirmed_at) : '—'}
+                <td className="py-3 px-4 text-right font-bold text-slate-900 whitespace-nowrap">{fmtRm(bill.total_amount_cents)}</td>
+                <td colSpan={2} className="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">
+                  {fmtRm(confirmedCents)} collected · {fmtRm(remainingCents)} remaining
                 </td>
               </tr>
-            ))}
-          </tbody>
-          {/* Totals row */}
-          <tfoot>
-            <tr className="border-t-2 border-slate-200 bg-slate-50">
-              <td colSpan={3} className="py-3 px-4 text-sm font-semibold text-slate-700">
-                {confirmedParts.length} confirmed · {pendingParts.length} pending
-              </td>
-              <td className="py-3 px-4 text-right font-bold text-slate-900">{fmtRm(bill.total_amount_cents)}</td>
-              <td colSpan={2} className="py-3 px-4 text-xs text-slate-400">
-                {fmtRm(confirmedCents)} collected · {fmtRm(remainingCents)} remaining
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            </tfoot>
+          </table>
+        </div>
 
         {/* Footer */}
         <div className="mt-10 border-t border-slate-100 pt-6 text-center text-xs text-slate-400">

@@ -55,54 +55,60 @@ export default function PasswordResetsClient({ requests: initial }: Props) {
   function renderTable(rows: ResetRequest[], showFulfillBtn: boolean) {
     if (rows.length === 0) return null
     return (
-      <table className="w-full text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">User</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Requested</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Status</th>
-            {showFulfillBtn && (
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Action</th>
-            )}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {rows.map(r => (
-            <tr key={r.id} className="hover:bg-slate-50">
-              <td className="px-4 py-3">
-                <div className="font-medium text-slate-900">{r.user_name ?? '—'}</div>
-                <div className="text-xs text-slate-400">{r.email}</div>
-              </td>
-              <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDateTime(r.requested_at)}</td>
-              <td className="px-4 py-3">
-                {r.status === 'PENDING' ? (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-                    <Clock className="h-3.5 w-3.5" /> Pending
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Fulfilled {r.fulfilled_at ? fmtDateTime(r.fulfilled_at) : ''}
-                  </span>
-                )}
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">User</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide whitespace-nowrap">Requested</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Status</th>
               {showFulfillBtn && (
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    disabled={fulfillingId === r.id}
-                    onClick={() => fulfill(r.id)}
-                    className="flex items-center gap-1.5 rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-                  >
-                    {fulfillingId === r.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                    Send Temp Password
-                  </button>
-                </td>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Action</th>
               )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map(r => (
+              <tr key={r.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 min-w-[140px]">
+                  <div className="font-medium text-slate-900">{r.user_name ?? '—'}</div>
+                  <div className="text-xs text-slate-400">{r.email}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDateTime(r.requested_at)}</td>
+                <td className="px-4 py-3 min-w-[120px]">
+                  {r.status === 'PENDING' ? (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                      <Clock className="h-3.5 w-3.5" /> Pending
+                    </span>
+                  ) : (
+                    <span className="flex flex-col gap-0.5 text-xs font-semibold text-emerald-600">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Fulfilled
+                      </span>
+                      {r.fulfilled_at && (
+                        <span className="font-normal text-slate-400">{fmtDateTime(r.fulfilled_at)}</span>
+                      )}
+                    </span>
+                  )}
+                </td>
+                {showFulfillBtn && (
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={fulfillingId === r.id}
+                      onClick={() => fulfill(r.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
+                    >
+                      {fulfillingId === r.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Send Temp Password
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 

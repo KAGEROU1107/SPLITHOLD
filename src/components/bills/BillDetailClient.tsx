@@ -203,12 +203,15 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   }
 
   async function viewProof(participantId: string) {
+    // Open tab synchronously so browsers don't block it as a popup
+    const tab = window.open('', '_blank', 'noopener,noreferrer')
     try {
       const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
-      if (!res.ok) { toast.error('Could not load proof'); return }
+      if (!res.ok) { tab?.close(); toast.error('Could not load proof'); return }
       const { url } = await res.json()
-      window.open(url, '_blank', 'noopener')
+      if (tab) tab.location.href = url
     } catch {
+      tab?.close()
       toast.error('Connection error')
     }
   }
