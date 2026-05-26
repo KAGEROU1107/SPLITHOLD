@@ -75,7 +75,7 @@ npm run seed:demo
 ### Environment Variables
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://ivizemwavexgzwlvjucy.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...   # Supabase dashboard → Settings → API
 JWT_SECRET=...                  # openssl rand -base64 32
@@ -90,7 +90,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 - **Account:** `demo@splithold.local` / `SplitHoldDemo123!`
 - **Bill:** "Langkawi Trip" — RM1,500 total, 5 participants (RM300 each)
-- **Status:** 3 confirmed (Kagerou, Amir, Sarah) · 2 pending (Mei, Daniel)
+- **Status:** 3 confirmed (Adam, Amir, Sarah) · 2 pending (Mei, Daniel)
 
 ---
 

@@ -8,8 +8,6 @@ export async function sendTempPasswordEmail(
   tempPassword: string
 ): Promise<void> {
   if (!resend) {
-    // Dev fallback: log to console if key not configured
-    console.log(`[email] Temp password for ${to} (${name}): ${tempPassword}`)
     return
   }
 
