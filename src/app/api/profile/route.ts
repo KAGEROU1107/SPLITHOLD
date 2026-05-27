@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { supabaseAdmin } from '@/lib/supabase'
 import { signToken, comparePassword, hashPassword } from '@/lib/auth'
 import { setSessionCookie } from '@/lib/session-cookie'
@@ -7,6 +8,8 @@ import { setSessionCookie } from '@/lib/session-cookie'
 export async function PATCH(request: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
 
   try {
     const body = await request.json() as { name?: string; currentPassword?: string; newPassword?: string }

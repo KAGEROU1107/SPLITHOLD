@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { supabaseAdmin } from '@/lib/supabase'
 import { logActivity } from '@/lib/activity'
 
@@ -11,6 +12,8 @@ export async function PATCH(
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
 
   const { id } = await params
   const body = await request.json() as { is_active?: boolean }

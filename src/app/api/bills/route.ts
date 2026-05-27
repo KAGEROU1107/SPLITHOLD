@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { createBill, getBillsByOrganizer, type CreateBillInput } from '@/lib/splithold-db'
 import { logActivity } from '@/lib/activity'
 
@@ -18,6 +19,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
 
   try {
     const body = await request.json() as {

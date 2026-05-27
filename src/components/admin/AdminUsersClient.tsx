@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { Search, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface AdminUser {
   id: string
@@ -34,7 +35,7 @@ export default function AdminUsersClient({ users: initial }: Props) {
   async function toggleActive(userId: string, current: boolean) {
     setTogglingId(userId)
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await csrfFetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !current }),

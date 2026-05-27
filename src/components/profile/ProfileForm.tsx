@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface Props {
   name: string
@@ -25,7 +26,7 @@ export default function ProfileForm({ name, email }: Props) {
         body.currentPassword = form.currentPassword
         body.newPassword = form.newPassword
       }
-      const res = await fetch('/api/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await csrfFetch('/api/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Update failed'); return }
       toast.success('Profile updated')

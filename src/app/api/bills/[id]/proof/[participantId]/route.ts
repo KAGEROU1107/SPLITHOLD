@@ -21,15 +21,17 @@ export async function GET(
 
   if (!bill) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Get participant proof_url
+  // Get participant proof_url — bill_id filter enforces cross-bill isolation
   const { data: participant } = await supabaseAdmin
     .from('bill_participants')
-    .select('id, proof_url')
+    .select('id, bill_id, proof_url')
     .eq('id', participantId)
     .eq('bill_id', billId)
     .single()
 
   if (!participant) return NextResponse.json({ error: 'Participant not found' }, { status: 404 })
+  // Explicit belt-and-suspenders: reject if participant belongs to a different bill
+  if (participant.bill_id !== billId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!participant.proof_url) return NextResponse.json({ error: 'No proof uploaded' }, { status: 404 })
 
   // Generate signed URL (60 min expiry)

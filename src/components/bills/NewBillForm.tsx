@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Loader2, CreditCard, ChevronDown, ChevronUp, Users, UserPlus } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface Participant {
   name: string
@@ -148,7 +149,7 @@ export default function NewBillForm() {
             })),
           }
 
-      const res = await fetch('/api/bills', {
+      const res = await csrfFetch('/api/bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

@@ -5,6 +5,7 @@ import { Menu, LogOut } from 'lucide-react'
 import AdminSidebar from './AdminSidebar'
 import type { SessionUser } from '@/lib/session'
 import toast from 'react-hot-toast'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface AdminShellProps {
   user: SessionUser
@@ -16,7 +17,7 @@ export default function AdminShell({ user, pendingResets = 0, children }: AdminS
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await csrfFetch('/api/auth/logout', { method: 'POST' })
     toast.success('Logged out')
     window.location.href = '/login'
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { Loader2, CheckCircle2, Clock } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface ResetRequest {
   id: string
@@ -31,7 +32,7 @@ export default function PasswordResetsClient({ requests: initial }: Props) {
   async function fulfill(id: string) {
     setFulfillingId(id)
     try {
-      const res = await fetch(`/api/admin/password-resets/${id}/fulfill`, { method: 'POST' })
+      const res = await csrfFetch(`/api/admin/password-resets/${id}/fulfill`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? 'Failed to fulfill request')

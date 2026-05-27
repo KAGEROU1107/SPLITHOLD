@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { updateBillStatus } from '@/lib/splithold-db'
 import { logActivity } from '@/lib/activity'
 
@@ -9,6 +10,8 @@ export async function PATCH(
 ) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
 
   const { id } = await params
 

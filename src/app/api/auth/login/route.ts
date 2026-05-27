@@ -1,5 +1,7 @@
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { signToken, comparePassword } from '@/lib/auth'
+import { setCsrfCookie } from '@/lib/csrf'
 import { rateLimit } from '@/lib/rateLimit'
 import { setSessionCookie } from '@/lib/session-cookie'
 import { supabaseAdmin } from '@/lib/supabase'
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ redirect: '/dashboard' })
     setSessionCookie(response, token)
+    setCsrfCookie(response, randomUUID())
     return response
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

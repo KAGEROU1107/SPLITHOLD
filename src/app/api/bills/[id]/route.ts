@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { getBillById, deleteBill } from '@/lib/splithold-db'
 import { logActivity } from '@/lib/activity'
 
@@ -18,15 +19,16 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
 
   const { id } = await params
-  const organizerId = session.role === 'ADMIN' ? null : session.id
-  const result = await deleteBill(id, organizerId)
+  const result = await deleteBill(id, session.id, session.role === 'ADMIN')
 
   if (!result.ok) {
     if (result.reason === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })

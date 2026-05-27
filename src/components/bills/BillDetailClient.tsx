@@ -9,6 +9,7 @@ import {
 import Link from 'next/link'
 import type { BillWithParticipants, BillParticipant } from '@/lib/splithold-db'
 import DeleteBillModal from './DeleteBillModal'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface Props {
   bill: BillWithParticipants
@@ -117,7 +118,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     const newStatus = bill.status === 'ACTIVE' ? 'CLOSED' : 'ACTIVE'
     setTogglingStatus(true)
     try {
-      const res = await fetch(`/api/bills/${bill.id}/status`, {
+      const res = await csrfFetch(`/api/bills/${bill.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -139,7 +140,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     const newOpen = !bill.registration_open
     setTogglingReg(true)
     try {
-      const res = await fetch(`/api/bills/${bill.id}/registration`, {
+      const res = await csrfFetch(`/api/bills/${bill.id}/registration`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ open: newOpen }),
@@ -164,7 +165,7 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
   ) {
     setReviewingId(participantId)
     try {
-      const res = await fetch(`/api/bills/${bill.id}/participants/${participantId}`, {
+      const res = await csrfFetch(`/api/bills/${bill.id}/participants/${participantId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, reason }),

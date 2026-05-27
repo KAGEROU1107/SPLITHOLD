@@ -7,6 +7,7 @@ import {
   X, AlertTriangle, FileText, Download, CheckCircle2, Loader2, ExternalLink,
 } from 'lucide-react'
 import type { BillParticipant } from '@/lib/splithold-db'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface Props {
   billId: string
@@ -53,7 +54,7 @@ export default function DeleteBillModal({ billId, billTitle, confirmedParticipan
     if (!canDelete) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/bills/${billId}`, { method: 'DELETE' })
+      const res = await csrfFetch(`/api/bills/${billId}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json()
         toast.error(data.error ?? 'Delete failed')

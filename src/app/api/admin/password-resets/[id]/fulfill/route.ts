@@ -1,27 +1,35 @@
+import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { validateCsrfHeader } from '@/lib/csrf'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hashPassword } from '@/lib/auth'
 import { sendTempPasswordEmail } from '@/lib/email'
 import { logActivity } from '@/lib/activity'
+import { rateLimit } from '@/lib/rateLimit'
 
 function genTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let result = ''
-  for (let i = 0; i < 10; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return result
+  return randomBytes(16).toString('base64url').slice(0, 20)
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession()
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  const csrfError = validateCsrfHeader(request)
+  if (csrfError) return csrfError
+
+  // Per-admin rate limit: 10 fulfillments per minute to prevent bulk abuse
+  const rateLimitResponse = await rateLimit({
+    windowMs: 60 * 1000,
+    maxRequests: 10,
+    scope: `admin:fulfill:${session.id}`,
+  })(request, NextResponse.json({}))
+  if (rateLimitResponse.status === 429) return rateLimitResponse
 
   const { id } = await params
 

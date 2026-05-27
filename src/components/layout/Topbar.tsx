@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { Menu, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface TopbarProps {
   userName: string
@@ -13,7 +14,7 @@ export default function Topbar({ userName, onMenuClick }: TopbarProps) {
   const router = useRouter()
 
   async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await csrfFetch('/api/auth/logout', { method: 'POST' })
     toast.success('Logged out successfully')
     router.push('/login')
   }
