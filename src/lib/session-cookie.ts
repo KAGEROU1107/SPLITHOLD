@@ -6,7 +6,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8
 export function setSessionCookie(response: NextResponse, token: string) {
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV !== 'development',
     sameSite: 'strict',
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',

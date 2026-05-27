@@ -70,42 +70,14 @@ export function rateLimit(options: {
 
       return response
     } catch (error) {
-      console.warn('[rateLimit] Supabase RPC unavailable, falling back to in-memory limiter', error)
-    }
-
-    cleanupExpiredEntries(now)
-
-    // Get or create entry for this IP
-    const entry = requestMap.get(bucketKey) || { count: 0, resetTime: now + windowMs }
-
-    // Reset window if expired
-    if (now > entry.resetTime) {
-      entry.count = 0
-      entry.resetTime = now + windowMs
-    }
-
-    // Increment request count
-    entry.count++
-
-    // Store updated entry
-    requestMap.set(bucketKey, entry)
-
-    // Check if limit exceeded
-    if (entry.count > maxRequests) {
+      // Fail closed — Supabase RPC unavailable means rate limiting cannot be enforced.
+      // On Vercel serverless, in-memory maps are per-instance and cannot provide global limits.
+      // Reject the request rather than allow an unguarded path through.
+      console.error('[rateLimit] Supabase RPC unavailable — failing closed for security', error)
       return NextResponse.json(
-        {
-          error: 'Terlalu banyak permintaan. Sila cuba lagi setelah beberapa saat.'
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': buildRetryAfter(entry.resetTime, now)
-          }
-        }
+        { error: 'Service temporarily unavailable. Please try again shortly.' },
+        { status: 429, headers: { 'Retry-After': '30' } }
       )
     }
-
-    // Return response if limit not exceeded
-    return response
   }
 }

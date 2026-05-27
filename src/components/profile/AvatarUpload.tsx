@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Loader2, Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { csrfFetch } from '@/lib/csrf-client'
 
 interface Props {
   name: string
@@ -31,7 +32,7 @@ export default function AvatarUpload({ name, currentUrl }: Props) {
       const fd = new FormData()
       fd.append('avatar', file)
 
-      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      const res = await csrfFetch('/api/profile/avatar', { method: 'POST', body: fd })
       const data = await res.json()
 
       if (!res.ok) {

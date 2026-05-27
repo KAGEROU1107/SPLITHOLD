@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { validateCsrfHeader } from '@/lib/csrf'
+import { rateLimit } from '@/lib/rateLimit'
 import { reviewParticipant } from '@/lib/splithold-db'
 import { logActivity } from '@/lib/activity'
 
@@ -12,6 +13,8 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const csrfError = validateCsrfHeader(req)
   if (csrfError) return csrfError
+  const rl = await rateLimit({ windowMs: 60 * 1000, maxRequests: 60, scope: 'bills:review' })(req, NextResponse.json({}))
+  if (rl.status === 429) return rl
 
   const { id: billId, participantId } = await params
 

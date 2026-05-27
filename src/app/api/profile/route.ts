@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { validateCsrfHeader } from '@/lib/csrf'
+import { rateLimit } from '@/lib/rateLimit'
 import { supabaseAdmin } from '@/lib/supabase'
 import { signToken, comparePassword, hashPassword } from '@/lib/auth'
 import { setSessionCookie } from '@/lib/session-cookie'
@@ -10,6 +11,9 @@ export async function PATCH(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const csrfError = validateCsrfHeader(request)
   if (csrfError) return csrfError
+  // bcrypt at cost 12 per call — limit to prevent CPU exhaustion
+  const rl = await rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 10, scope: `profile:update:${session.id}` })(request, NextResponse.json({}))
+  if (rl.status === 429) return rl
 
   try {
     const body = await request.json() as { name?: string; currentPassword?: string; newPassword?: string }

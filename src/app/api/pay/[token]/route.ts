@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getParticipantByToken, confirmPayment } from '@/lib/splithold-db'
 import { supabaseAdmin } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rateLimit'
+import { validateFileMagicBytes } from '@/lib/file-validation'
 
 export async function GET(
   _request: NextRequest,
@@ -37,9 +38,11 @@ export async function POST(
       if (file.size > 5 * 1024 * 1024) {
         return NextResponse.json({ error: 'File too large — max 5MB' }, { status: 400 })
       }
-      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
-      if (!allowed.includes(file.type)) {
-        return NextResponse.json({ error: 'Invalid file type. Use JPG, PNG, or PDF.' }, { status: 400 })
+      // Validate file type by magic bytes — client-controlled MIME headers are not trusted
+      const arrayBuffer = await file.arrayBuffer()
+      const validation = validateFileMagicBytes(arrayBuffer)
+      if (!validation.valid) {
+        return NextResponse.json({ error: 'Invalid file type. Use JPG, PNG, WebP, or PDF.' }, { status: 400 })
       }
 
       // Pre-flight check before uploading
@@ -48,13 +51,12 @@ export async function POST(
       if (participant.status === 'CONFIRMED') return NextResponse.json({ error: 'already_confirmed' }, { status: 409 })
       if (participant.bill.status === 'CLOSED') return NextResponse.json({ error: 'bill_closed' }, { status: 403 })
 
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-      const storagePath = `${participant.bill_id}/${participant.id}/proof.${ext}`
+      // Extension derived from detected type — not from client-supplied filename
+      const storagePath = `${participant.bill_id}/${participant.id}/proof.${validation.extension}`
 
-      const arrayBuffer = await file.arrayBuffer()
       const { error: uploadError } = await supabaseAdmin.storage
         .from('payment-proofs')
-        .upload(storagePath, arrayBuffer, { contentType: file.type, upsert: true })
+        .upload(storagePath, arrayBuffer, { contentType: validation.detectedType, upsert: true })
 
       if (uploadError) {
         console.error('[pay/confirm] storage upload error:', uploadError.message)
