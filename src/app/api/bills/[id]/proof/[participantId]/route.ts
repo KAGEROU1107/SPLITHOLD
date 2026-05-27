@@ -11,13 +11,11 @@ export async function GET(
 
   const { id: billId, participantId } = await params
 
-  // Verify organizer owns this bill
-  const { data: bill } = await supabaseAdmin
-    .from('bills')
-    .select('id, organizer_id')
-    .eq('id', billId)
-    .eq('organizer_id', user.id)
-    .single()
+  // Admins can view any bill's proof; organizers can only view their own bill's proof
+  const query = supabaseAdmin.from('bills').select('id, organizer_id').eq('id', billId)
+  const { data: bill } = user.role === 'ADMIN'
+    ? await query.single()
+    : await query.eq('organizer_id', user.id).single()
 
   if (!bill) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -44,5 +42,7 @@ export async function GET(
     return NextResponse.json({ error: 'Could not generate proof URL' }, { status: 500 })
   }
 
-  return NextResponse.json({ url: data.signedUrl })
+  // Redirect directly to the signed URL — client can window.open this endpoint instead of
+  // fetching JSON and then navigating, which breaks with noopener window flags.
+  return NextResponse.redirect(data.signedUrl)
 }

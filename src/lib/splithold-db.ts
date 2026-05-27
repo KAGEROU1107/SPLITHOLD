@@ -177,14 +177,16 @@ export async function getBillsByOrganizer(organizerId: string): Promise<BillSumm
 
 export async function getBillById(
   id: string,
-  organizerId: string
+  organizerId: string,
+  isAdmin = false
 ): Promise<BillWithParticipants | null> {
-  const { data: bill, error } = await supabaseAdmin
+  const query = supabaseAdmin
     .from('bills')
     .select('*, bill_participants(*)')
     .eq('id', id)
-    .eq('organizer_id', organizerId)
-    .single()
+  const { data: bill, error } = isAdmin
+    ? await query.single()
+    : await query.eq('organizer_id', organizerId).single()
 
   if (error) return null
   if (!bill) return null

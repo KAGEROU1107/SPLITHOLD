@@ -203,18 +203,10 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     }
   }
 
-  async function viewProof(participantId: string) {
-    // Open tab synchronously so browsers don't block it as a popup
-    const tab = window.open('', '_blank', 'noopener,noreferrer')
-    try {
-      const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
-      if (!res.ok) { tab?.close(); toast.error('Could not load proof'); return }
-      const { url } = await res.json()
-      if (tab) tab.location.href = url
-    } catch {
-      tab?.close()
-      toast.error('Connection error')
-    }
+  function viewProof(participantId: string) {
+    // API endpoint redirects to a Supabase signed URL — open directly to avoid
+    // noopener/noreferrer blocking tab.location.href navigation.
+    window.open(`/api/bills/${bill.id}/proof/${participantId}`, '_blank', 'noreferrer')
   }
 
   async function downloadProof(participantId: string, participantName: string) {
@@ -222,9 +214,9 @@ export default function BillDetailClient({ bill: initialBill, appUrl }: Props) {
     try {
       const res = await fetch(`/api/bills/${bill.id}/proof/${participantId}`)
       if (!res.ok) { toast.error('Could not load proof'); return }
-      const { url } = await res.json()
+      // API now redirects — res.url is the final signed URL after the redirect
       const a = document.createElement('a')
-      a.href = url
+      a.href = res.url
       a.download = `proof-${participantName.replace(/\s+/g, '-')}`
       a.click()
     } catch {

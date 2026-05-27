@@ -13,7 +13,7 @@ export async function GET(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const bill = await getBillById(id, session.id)
+  const bill = await getBillById(id, session.id, session.role === 'ADMIN')
   if (!bill) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   return NextResponse.json({ bill })

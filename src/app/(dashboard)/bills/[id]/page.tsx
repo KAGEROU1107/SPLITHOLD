@@ -12,7 +12,7 @@ export default async function BillDetailPage({ params }: Props) {
   if (!user) redirect('/login')
 
   const { id } = await params
-  const bill = await getBillById(id, user.id)
+  const bill = await getBillById(id, user.id, user.role === 'ADMIN')
   if (!bill) notFound()
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
