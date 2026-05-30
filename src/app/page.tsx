@@ -2,20 +2,22 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import Link from 'next/link'
 import { CheckCircle2, Link2, Users } from 'lucide-react'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
 export default async function Home() {
   const user = await getSession()
   if (user) redirect('/dashboard')
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-brand-mist via-white to-slate-50">
+    <main className="min-h-screen bg-gradient-to-br from-brand-mist via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-brand-ink">
       <nav className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary text-sm font-bold text-white">SH</div>
           <span className="font-bold text-slate-900">SplitHold</span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Log in</Link>
+          <ThemeToggle />
+          <Link href="/login" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Log in</Link>
           <Link href="/register" className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 transition-colors">
             Get started
           </Link>
