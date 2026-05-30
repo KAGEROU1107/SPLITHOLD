@@ -35,9 +35,9 @@ export function rateLimit(options: {
 
     try {
       const { data, error } = await supabaseAdmin.rpc('check_rate_limit', {
-        bucket_key: bucketKey,
-        window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
-        max_requests: maxRequests,
+        p_bucket_key: bucketKey,
+        p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+        p_max_requests: maxRequests,
       })
 
       if (error) {

@@ -14,7 +14,7 @@ export default function AppShell({ user, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       <Sidebar
         userName={user.name}
         role={user.role}
@@ -26,7 +26,7 @@ export default function AppShell({ user, children }: AppShellProps) {
           userName={user.name}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6">
+        <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6 dark:bg-slate-900">
           {children}
         </main>
       </div>
